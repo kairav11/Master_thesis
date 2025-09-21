@@ -1,0 +1,114 @@
+{
+  "Jilin": {
+    "Linear": {
+      "MAE": 51.411,
+      "RMSE": 68.132,
+      "R2": 0.646,
+      "accuracy": 0.101,
+      "accuracy5": 0.049,
+      "accuracy10": 0.101,
+      "accuracy20": 0.212
+    },
+    "KNN": {
+      "MAE": 31.145,
+      "RMSE": 50.954,
+      "R2": 0.802,
+      "accuracy": 0.312,
+      "accuracy5": 0.163,
+      "accuracy10": 0.312,
+      "accuracy20": 0.538
+    },
+    "RandomForest": {
+      "MAE": 1.864,
+      "RMSE": 7.143,
+      "R2": 0.996,
+      "accuracy": 0.974,
+      "accuracy5": 0.949,
+      "accuracy10": 0.974,
+      "accuracy20": 0.985
+    },
+    "XGBoost": {
+      "MAE": 5.032,
+      "RMSE": 13.754,
+      "R2": 0.986,
+      "accuracy": 0.92,
+      "accuracy5": 0.764,
+      "accuracy10": 0.92,
+      "accuracy20": 0.971
+    },
+    "CatBoost": {
+      "MAE": 3.342,
+      "RMSE": 12.15,
+      "R2": 0.989,
+      "accuracy": 0.963,
+      "accuracy5": 0.899,
+      "accuracy10": 0.963,
+      "accuracy20": 0.98
+    },
+    "Transformer": {
+      "MAE": 74.208,
+      "RMSE": 100.685,
+      "R2": 0.227,
+      "accuracy": 0.085,
+      "accuracy5": 0.045,
+      "accuracy10": 0.085,
+      "accuracy20": 0.173
+    }
+  },
+  "Yantai": {
+    "Linear": {
+      "MAE": 66.688,
+      "RMSE": 87.908,
+      "R2": 0.659,
+      "accuracy": 0.08,
+      "accuracy5": 0.039,
+      "accuracy10": 0.08,
+      "accuracy20": 0.161
+    },
+    "KNN": {
+      "MAE": 26.709,
+      "RMSE": 48.424,
+      "R2": 0.897,
+      "accuracy": 0.393,
+      "accuracy5": 0.211,
+      "accuracy10": 0.393,
+      "accuracy20": 0.627
+    },
+    "RandomForest": {
+      "MAE": 0.723,
+      "RMSE": 3.016,
+      "R2": 1.0,
+      "accuracy": 0.994,
+      "accuracy5": 0.984,
+      "accuracy10": 0.994,
+      "accuracy20": 0.998
+    },
+    "XGBoost": {
+      "MAE": 3.819,
+      "RMSE": 12.622,
+      "R2": 0.993,
+      "accuracy": 0.952,
+      "accuracy5": 0.844,
+      "accuracy10": 0.952,
+      "accuracy20": 0.981
+    },
+    "CatBoost": {
+      "MAE": 3.564,
+      "RMSE": 14.825,
+      "R2": 0.99,
+      "accuracy": 0.965,
+      "accuracy5": 0.886,
+      "accuracy10": 0.965,
+      "accuracy20": 0.982
+    },
+    "Transformer": {
+      "MAE": 11.291,
+      "RMSE": 21.383,
+      "R2": 0.98,
+      "accuracy": 0.686,
+      "accuracy5": 0.367,
+      "accuracy10": 0.686,
+      "accuracy20": 0.883
+    }
+  }
+}

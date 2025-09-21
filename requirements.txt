@@ -1,0 +1,12 @@
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+pathlib
+xgboost
+catboost
+torch
+requests
+holidays
+joblib
