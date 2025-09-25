@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 """
-ATA EDA Toolkit
+Quick EDA plots for delivery time analysis
 
-Reusable plotting and EDA utilities for exploring Actual Time of Arrival (ATA, minutes).
+Just some handy functions to visualize ATA data - mostly histograms, scatter plots, 
+and time series stuff. Nothing fancy, just helps me understand what's going on.
 
-Dependencies: Python 3.10+, pandas, numpy, matplotlib, seaborn, scipy (optional)
+Need: pandas, numpy, matplotlib, seaborn. scipy is nice to have but not required.
 """
 
 from dataclasses import dataclass
@@ -18,32 +19,27 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # non-interactive backend to avoid Tkinter issues
+matplotlib.use("Agg")  # this avoids GUI issues when running headless
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 try:
-    from scipy import stats  # optional (LOWESS not used; correlations, residuals)
+    from scipy import stats  # nice to have but not essential
     SCIPY_AVAILABLE = True
 except Exception:
     SCIPY_AVAILABLE = False
 
 
-# ------------------------------
-# Global styling and utilities
+# basic setup stuff
 # ------------------------------
 
-PALETTE: List[tuple] = []  # populated in setup_plotting
+PALETTE: List[tuple] = []  # gets filled when we set up plotting
 
 
 def setup_plotting(style: str = "whitegrid", context: str = "notebook") -> None:
-    """Configure seaborn/matplotlib defaults for legible plots.
-
-    Parameters
-    ----------
-    style: seaborn style (e.g., "whitegrid", "darkgrid")
-    context: seaborn context (e.g., "paper", "notebook", "talk", "poster")
-    """
+    # sets up the plot styling so everything looks decent
+    # style: "whitegrid" or "darkgrid" etc
+    # context: "paper", "notebook", "talk", "poster"
     sns.set_theme(style=style, context=context)
     sns.set_palette("colorblind")
     global PALETTE
@@ -61,16 +57,12 @@ def setup_plotting(style: str = "whitegrid", context: str = "notebook") -> None:
 
 
 def ensure_columns(df: pd.DataFrame, required_cols: Iterable[str]) -> None:
-    """Raise a clear error if any required column is missing.
-
-    Parameters
-    ----------
-    df: input DataFrame
-    required_cols: list of required column names
-    """
+    # throws an error if we're missing any columns we need
+    # df: the dataframe to check
+    # required_cols: list of column names that must exist
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+        raise ValueError(f"Missing required columns: {missing}")  # gotta have these
 
 
 def _warn_or_skip(condition: bool, message: str) -> bool:
@@ -83,7 +75,7 @@ def _warn_or_skip(condition: bool, message: str) -> bool:
 def _dropna_for(df: pd.DataFrame, cols: Sequence[str]) -> pd.DataFrame:
     present = [c for c in cols if c in df.columns]
     if not present:
-        return df.iloc[0:0]
+        return df.iloc[0:0]  # empty df if no valid columns
     return df.dropna(subset=present)
 
 
@@ -92,29 +84,25 @@ def _coerce_numeric(s: pd.Series) -> pd.Series:
 
 
 def _safe_int(s: pd.Series) -> pd.Series:
-    # Handles pandas Int64 nullable to int where possible
+    # deals with pandas nullable ints
     return pd.to_numeric(s, errors="coerce").astype(float)
 
 
 def _top_n_category(df: pd.DataFrame, col: str, top_n: int = 20) -> pd.Series:
-    counts = df[col].value_counts(dropna=False)
+    counts = df[col].value_counts(dropna=False)  # count everything, even nans
     keep = set(counts.head(top_n).index)
     mapped = df[col].where(df[col].isin(keep), other="Other")
     return mapped
 
 
 def savefig(fig: plt.Figure, outdir: Optional[str], name: str) -> List[str]:
-    """Save a figure to PNG and SVG; return saved paths.
-
-    Parameters
-    ----------
-    fig: matplotlib Figure
-    outdir: output directory (created if needed). If None, no saving.
-    name: base filename without extension
-    """
+    # saves the plot as both PNG and SVG
+    # fig: the matplotlib figure to save
+    # outdir: where to save it (creates folder if needed). None = no saving
+    # name: filename without extension
     saved: List[str] = []
     if outdir:
-        os.makedirs(outdir, exist_ok=True)
+        os.makedirs(outdir, exist_ok=True)  # make sure output folder exists
         png = os.path.join(outdir, f"{name}.png")
         svg = os.path.join(outdir, f"{name}.svg")
         fig.savefig(png)
@@ -123,12 +111,11 @@ def savefig(fig: plt.Figure, outdir: Optional[str], name: str) -> List[str]:
     return saved
 
 
-# ------------------------------
-# Target distribution
+# looking at the main target variable
 # ------------------------------
 
 def plot_target_hist(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Histogram + KDE of ata_minutes, annotated with skew, mean, median."""
+    # histogram of delivery times with some basic stats
     if not _warn_or_skip("ata_minutes" in df.columns, "plot_target_hist: 'ata_minutes' missing"):
         return (plt.figure(), plt.gca())
     s = _coerce_numeric(df["ata_minutes"]).dropna()
@@ -146,13 +133,13 @@ def plot_target_hist(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[pl
 
 
 def plot_target_box(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Boxplot of ata_minutes with whiskers and outlier count."""
+    # boxplot to see outliers and quartiles
     if not _warn_or_skip("ata_minutes" in df.columns, "plot_target_box: 'ata_minutes' missing"):
         return (plt.figure(), plt.gca())
     s = _coerce_numeric(df["ata_minutes"]).dropna()
-    q1, q3 = s.quantile(0.25), s.quantile(0.75)
-    iqr = q3 - q1
-    lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+    q1, q3 = s.quantile(0.25), s.quantile(0.75)  # quartiles
+    iqr = q3 - q1  # interquartile range
+    lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr  # outlier bounds
     outliers = int((s < lo).sum() + (s > hi).sum())
     fig, ax = plt.subplots()
     sns.boxplot(x=s, ax=ax, color="#72b7b2")
@@ -162,12 +149,11 @@ def plot_target_box(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt
     return fig, ax
 
 
-# ------------------------------
-# Univariate features
+# individual feature plots
 # ------------------------------
 
 def _apply_hatch(ax: plt.Axes) -> None:
-    hatches = ["/", "\\", "|", "-", "+", "x", "o", "O", ".", "*"]
+    hatches = ["/", "\\", "|", "-", "+", "x", "o", "O", ".", "*"]  # different patterns
     for i, p in enumerate(getattr(ax, "patches", [])):
         try:
             p.set_hatch(hatches[i % len(hatches)])
@@ -177,7 +163,7 @@ def _apply_hatch(ax: plt.Axes) -> None:
 
 
 def plot_categorical_by_count(df: pd.DataFrame, col: str, top_n: int = 20, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Barplot of category counts (top N)."""
+    # bar chart showing counts for each category (just the top N)
     if not _warn_or_skip(col in df.columns, f"plot_categorical_by_count: '{col}' missing"):
         return (plt.figure(), plt.gca())
     work = df.copy()
@@ -194,7 +180,8 @@ def plot_categorical_by_count(df: pd.DataFrame, col: str, top_n: int = 20, outdi
 
 
 def plot_ata_by_category(df: pd.DataFrame, col: str, top_n: int = 20, show_violin: bool = True, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Box/violin plot of ATA per category (top N categories)."""
+    # shows how delivery time varies across different categories
+    # can show violin or box plot
     if not _warn_or_skip({col, "ata_minutes"}.issubset(df.columns), f"plot_ata_by_category: need '{col}', 'ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = df.copy()
@@ -213,7 +200,7 @@ def plot_ata_by_category(df: pd.DataFrame, col: str, top_n: int = 20, show_violi
 
 
 def plot_numeric_hist(df: pd.DataFrame, col: str, bins: int = 50, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Histogram + KDE for a numeric feature with mean/std annotations."""
+    # histogram for any numeric column with mean line
     if not _warn_or_skip(col in df.columns, f"plot_numeric_hist: '{col}' missing"):
         return (plt.figure(), plt.gca())
     s = _coerce_numeric(df[col]).dropna()
@@ -226,8 +213,7 @@ def plot_numeric_hist(df: pd.DataFrame, col: str, bins: int = 50, outdir: Option
     return fig, ax
 
 
-# ------------------------------
-# Relationships with ATA
+# how things relate to delivery time
 # ------------------------------
 
 def _pearson_spearman(x: np.ndarray, y: np.ndarray) -> Tuple[float, float]:
@@ -237,7 +223,8 @@ def _pearson_spearman(x: np.ndarray, y: np.ndarray) -> Tuple[float, float]:
 
 
 def plot_scatter_with_trend(df: pd.DataFrame, x: str, y: str = "ata_minutes", sample: int = 5000, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
-    """Scatter with optional downsampling and a simple linear trendline; shows Pearson/Spearman."""
+    # scatter plot with a trend line and correlation stats
+    # samples data if it's too big
     needed = {x, y}
     if not _warn_or_skip(needed.issubset(df.columns), f"plot_scatter_with_trend: need {needed}"):
         return (plt.figure(), plt.gca())
@@ -251,7 +238,7 @@ def plot_scatter_with_trend(df: pd.DataFrame, x: str, y: str = "ata_minutes", sa
     ynum = _coerce_numeric(work[y]).to_numpy()
     fig, ax = plt.subplots()
     ax.scatter(xnum, ynum, alpha=0.35, s=10, color=PALETTE[0])
-    # Simple linear fit
+    # add a trend line
     if len(work) >= 3:
         try:
             slope, intercept = np.polyfit(xnum, ynum, 1)
@@ -270,27 +257,31 @@ def plot_scatter_with_trend(df: pd.DataFrame, x: str, y: str = "ata_minutes", sa
 
 
 def plot_distance_vs_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # quick wrapper for distance vs delivery time
     return plot_scatter_with_trend(df, x="distance_km", y="ata_minutes", outdir=outdir)
 
 
 def plot_speed_vs_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # speed vs delivery time
     return plot_scatter_with_trend(df, x="speed_kmh", y="ata_minutes", outdir=outdir)
 
 
 def plot_temperature_vs_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # temperature vs delivery time
     return plot_scatter_with_trend(df, x="temperature_2m", y="ata_minutes", outdir=outdir)
 
 
 def plot_precipitation_vs_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # rain vs delivery time
     return plot_scatter_with_trend(df, x="precipitation", y="ata_minutes", outdir=outdir)
 
 
 def plot_wind_vs_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # wind speed vs delivery time
     return plot_scatter_with_trend(df, x="wind_speed_10m", y="ata_minutes", outdir=outdir)
 
 
-# ------------------------------
-# Time patterns
+# time-based analysis
 # ------------------------------
 
 def _ensure_time_parts(df: pd.DataFrame) -> pd.DataFrame:
@@ -320,6 +311,7 @@ def _mean_ci(series: pd.Series) -> Tuple[float, float]:
 
 
 def plot_ata_by_hour(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # how delivery times change throughout the day
     work = _ensure_time_parts(df)
     if not _warn_or_skip({"hour", "ata_minutes"}.issubset(work.columns), "plot_ata_by_hour: need 'hour', 'ata_minutes'"):
         return (plt.figure(), plt.gca())
@@ -336,6 +328,7 @@ def plot_ata_by_hour(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[pl
 
 
 def plot_ata_by_dow(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # delivery times by day of the week
     work = _ensure_time_parts(df)
     if not _warn_or_skip({"day_of_week", "ata_minutes"}.issubset(work.columns), "plot_ata_by_dow: need 'day_of_week', 'ata_minutes'"):
         return (plt.figure(), plt.gca())
@@ -351,6 +344,7 @@ def plot_ata_by_dow(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt
 
 
 def plot_ata_by_week(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # weekly trends in delivery times
     work = _ensure_time_parts(df)
     if not _warn_or_skip({"week_of_year", "ata_minutes"}.issubset(work.columns), "plot_ata_by_week: need 'week_of_year', 'ata_minutes'"):
         return (plt.figure(), plt.gca())
@@ -365,6 +359,7 @@ def plot_ata_by_week(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[pl
 
 
 def plot_daily_ts(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # daily time series with rolling average
     work = df.copy()
     if "date" not in work.columns:
         if "accept_time" in work.columns:
@@ -390,6 +385,7 @@ def plot_daily_ts(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.F
 
 
 def plot_hour_dow_heatmap(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # heatmap of delivery times by hour and day of week
     work = _ensure_time_parts(df)
     if not _warn_or_skip({"hour", "day_of_week", "ata_minutes"}.issubset(work.columns), "plot_hour_dow_heatmap: need hour, day_of_week, ata_minutes"):
         return (plt.figure(), plt.gca())
@@ -405,11 +401,12 @@ def plot_hour_dow_heatmap(df: pd.DataFrame, outdir: Optional[str] = None) -> Tup
     return fig, ax
 
 
-# ------------------------------
-# Spatial views
+# geographic stuff
 # ------------------------------
 
 def plot_geo_scatter(df: pd.DataFrame, lon_col: str = "delivery_gps_lng", lat_col: str = "delivery_gps_lat", color: str = "ata_minutes", sample: int = 10000, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # geographic scatter plot colored by delivery time
+    # samples data if there's too much
     cols = {lon_col, lat_col, color}
     if not _warn_or_skip(cols.issubset(df.columns), f"plot_geo_scatter: need {cols}"):
         return (plt.figure(), plt.gca())
@@ -428,6 +425,7 @@ def plot_geo_scatter(df: pd.DataFrame, lon_col: str = "delivery_gps_lng", lat_co
 
 
 def plot_city_region_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # delivery times by city and region
     if not _warn_or_skip("ata_minutes" in df.columns, "plot_city_region_ata: 'ata_minutes' missing"):
         return (plt.figure(), plt.gca())
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
@@ -455,11 +453,11 @@ def plot_city_region_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tupl
     return fig, axes[0]
 
 
-# ------------------------------
-# Weather effects
+# weather impact analysis
 # ------------------------------
 
 def plot_weather_boxes(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # box plots showing weather impact on delivery times
     cats = [c for c in ["is_rain", "temp_bucket", "wind_bucket"] if c in df.columns]
     if not cats or "ata_minutes" not in df.columns:
         warnings.warn("plot_weather_boxes: required columns missing")
@@ -483,6 +481,7 @@ def plot_weather_boxes(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[
 
 
 def plot_weather_scatter(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # scatter plots for weather variables vs delivery time
     cols = [c for c in ["temperature_2m", "precipitation", "wind_speed_10m"] if c in df.columns]
     if not cols or "ata_minutes" not in df.columns:
         warnings.warn("plot_weather_scatter: required columns missing")
@@ -497,7 +496,7 @@ def plot_weather_scatter(df: pd.DataFrame, outdir: Optional[str] = None) -> Tupl
         xnum = _coerce_numeric(work[col]).to_numpy()
         ynum = _coerce_numeric(work["ata_minutes"]).to_numpy()
         ax.scatter(xnum, ynum, alpha=0.3, s=10, color="#4c78a8")
-        # linear trend
+        # add trend line
         if len(work) >= 3:
             try:
                 slope, intercept = np.polyfit(xnum, ynum, 1)
@@ -513,11 +512,11 @@ def plot_weather_scatter(df: pd.DataFrame, outdir: Optional[str] = None) -> Tupl
     return fig, axes[0]
 
 
-# ------------------------------
-# Distance & speed
+# distance and speed stuff
 # ------------------------------
 
 def plot_ata_by_distance_bucket(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # delivery times by distance ranges
     if not _warn_or_skip({"distance_bucket", "ata_minutes"}.issubset(df.columns), "plot_ata_by_distance_bucket: need 'distance_bucket', 'ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = _dropna_for(df, ["distance_bucket", "ata_minutes"]).copy()
@@ -532,6 +531,7 @@ def plot_ata_by_distance_bucket(df: pd.DataFrame, outdir: Optional[str] = None) 
 
 
 def plot_speed_vs_distance(df: pd.DataFrame, sample: int = 5000, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # hexbin plot of speed vs distance
     if not _warn_or_skip({"distance_km", "speed_kmh"}.issubset(df.columns), "plot_speed_vs_distance: need 'distance_km', 'speed_kmh'"):
         return (plt.figure(), plt.gca())
     work = _dropna_for(df[["distance_km", "speed_kmh"]], ["distance_km", "speed_kmh"]).copy()
@@ -548,11 +548,11 @@ def plot_speed_vs_distance(df: pd.DataFrame, sample: int = 5000, outdir: Optiona
     return fig, ax
 
 
-# ------------------------------
-# Courier & AOI
+# courier and area analysis
 # ------------------------------
 
 def plot_ata_by_courier(df: pd.DataFrame, top_n: int = 15, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # delivery times by courier (top N only)
     if not _warn_or_skip({"courier_id", "ata_minutes"}.issubset(df.columns), "plot_ata_by_courier: need 'courier_id','ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = df.copy()
@@ -569,6 +569,7 @@ def plot_ata_by_courier(df: pd.DataFrame, top_n: int = 15, outdir: Optional[str]
 
 
 def plot_ata_by_aoi_type(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # delivery times by area of interest type
     if not _warn_or_skip({"aoi_type", "ata_minutes"}.issubset(df.columns), "plot_ata_by_aoi_type: need 'aoi_type','ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = _dropna_for(df, ["aoi_type", "ata_minutes"]).copy()
@@ -581,11 +582,11 @@ def plot_ata_by_aoi_type(df: pd.DataFrame, outdir: Optional[str] = None) -> Tupl
     return fig, ax
 
 
-# ------------------------------
-# Correlations
+# correlation stuff
 # ------------------------------
 
 def plot_corr_heatmap(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # correlation matrix heatmap for numeric columns
     num_df = df.select_dtypes(include=[np.number])
     if "ata_minutes" in df.columns and "ata_minutes" not in num_df.columns:
         num_df = num_df.join(_coerce_numeric(df["ata_minutes"]))
@@ -601,6 +602,7 @@ def plot_corr_heatmap(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[p
 
 
 def plot_pairgrid(df: pd.DataFrame, cols: Sequence[str], outdir: Optional[str] = None) -> Optional[sns.axisgrid.PairGrid]:
+    # pairwise scatter plots for multiple variables
     for c in cols:
         if c not in df.columns:
             warnings.warn(f"plot_pairgrid: column '{c}' missing, skipping")
@@ -616,8 +618,7 @@ def plot_pairgrid(df: pd.DataFrame, cols: Sequence[str], outdir: Optional[str] =
     return g
 
 
-# ------------------------------
-# Outliers via simple linear fits
+# finding weird points
 # ------------------------------
 
 def _annotate_top_residuals(ax: plt.Axes, x: np.ndarray, y: np.ndarray, k: int = 10) -> None:
@@ -628,7 +629,7 @@ def _annotate_top_residuals(ax: plt.Axes, x: np.ndarray, y: np.ndarray, k: int =
         yhat = slope * x + intercept
         resid = y - yhat
         if SCIPY_AVAILABLE and len(x) > 3:
-            # Studentized residuals approximation
+            # try to find really weird points
             _, _, _, _, mse = np.polyfit(x, y, 1, full=True)
             mse = mse[0] / (len(x) - 2) if len(mse) else np.var(resid)
             se = np.sqrt(mse * (1/len(x) + (x - x.mean())**2 / ((x - x.mean())**2).sum()))
@@ -643,6 +644,7 @@ def _annotate_top_residuals(ax: plt.Axes, x: np.ndarray, y: np.ndarray, k: int =
 
 
 def plot_outliers_distance_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # finds weird points in distance vs delivery time relationship
     if not _warn_or_skip({"distance_km", "ata_minutes"}.issubset(df.columns), "plot_outliers_distance_ata: need 'distance_km','ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = _dropna_for(df, ["distance_km", "ata_minutes"]).copy()
@@ -657,6 +659,7 @@ def plot_outliers_distance_ata(df: pd.DataFrame, outdir: Optional[str] = None) -
 
 
 def plot_outliers_speed_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> Tuple[plt.Figure, plt.Axes]:
+    # finds weird points in speed vs delivery time relationship
     if not _warn_or_skip({"speed_kmh", "ata_minutes"}.issubset(df.columns), "plot_outliers_speed_ata: need 'speed_kmh','ata_minutes'"):
         return (plt.figure(), plt.gca())
     work = _dropna_for(df, ["speed_kmh", "ata_minutes"]).copy()
@@ -670,11 +673,11 @@ def plot_outliers_speed_ata(df: pd.DataFrame, outdir: Optional[str] = None) -> T
     return fig, ax
 
 
-# ------------------------------
-# CLI and demo helpers
+# command line and testing
 # ------------------------------
 
 def _parse_dates(df: pd.DataFrame) -> pd.DataFrame:
+    # converts date columns to proper datetime format
     out = df.copy()
     for c in ["accept_time", "delivery_time", "dt_hour", "date"]:
         if c in out.columns:
@@ -683,57 +686,57 @@ def _parse_dates(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_eda_suite(df: pd.DataFrame, outdir: str) -> List[str]:
-    """Run a standard EDA suite and save figures to outdir; return saved paths."""
+    # runs a bunch of plots and saves them all
+    # returns list of files that were saved
     setup_plotting()
     os.makedirs(outdir, exist_ok=True)
     saved: List[str] = []
 
-    # Core target
+    # main target variable plots
     saved += savefig(plot_target_hist(df, outdir)[0], outdir, "01_target_hist")
     saved += savefig(plot_target_box(df, outdir)[0], outdir, "02_target_box")
 
-    # Time
+    # time-based analysis
     plot_ata_by_hour(df, outdir)
     plot_ata_by_dow(df, outdir)
     plot_ata_by_week(df, outdir)
     plot_daily_ts(df, outdir)
     plot_hour_dow_heatmap(df, outdir)
 
-    # Relationships
+    # how things relate to delivery time
     plot_distance_vs_ata(df, outdir)
     plot_speed_vs_ata(df, outdir)
 
-    # Weather
+    # weather impact
     plot_weather_boxes(df, outdir)
     plot_weather_scatter(df, outdir)
 
-    # City/region and buckets
+    # geographic and categorical stuff
     plot_city_region_ata(df, outdir)
     plot_ata_by_distance_bucket(df, outdir)
 
-    # Correlations
+    # correlation stuff
     plot_corr_heatmap(df, outdir)
 
     return saved
 
 
-# ------------------------------
-# Synthetic data for smoke tests
+# fake data for testing
 # ------------------------------
 
 def make_fake_df(n: int = 5000, seed: int = 42) -> pd.DataFrame:
-    """Generate a synthetic dataset with a similar schema for quick testing."""
-    rng = np.random.default_rng(seed)
+    # creates fake data that looks kinda like the real thing for testing
+    rng = np.random.default_rng(seed)  # for reproducible fake data
     hours = rng.integers(6, 23, size=n)
     dow = rng.integers(0, 7, size=n)
-    dist = rng.gamma(shape=2.0, scale=2.0, size=n)  # skewed distance
+    dist = rng.gamma(shape=2.0, scale=2.0, size=n)  # realistic distance distribution
     speed = np.clip(rng.normal(loc=15, scale=5, size=n), 1, 50)
     temp = rng.normal(loc=22, scale=6, size=n)
     precip = np.clip(rng.gamma(1.5, 0.5, size=n) - 0.5, 0, None)
     wind = np.clip(rng.normal(10, 4, size=n), 0, None)
     is_rain = (precip > 0.1).astype(int)
-    base = 60 + 5 * (hours >= 17) + 5 * (hours <= 9) + 3 * is_rain
-    ata = base + 8 * np.sqrt(dist) + rng.normal(0, 10, size=n)
+    base = 60 + 5 * (hours >= 17) + 5 * (hours <= 9) + 3 * is_rain  # base time + rush hours + rain
+    ata = base + 8 * np.sqrt(dist) + rng.normal(0, 10, size=n)  # add distance effect and noise
     date = pd.Timestamp("2022-06-01") + pd.to_timedelta(rng.integers(0, 120, size=n), unit="D")
     accept_time = date + pd.to_timedelta(hours, unit="H")
 
@@ -770,10 +773,11 @@ def make_fake_df(n: int = 5000, seed: int = 42) -> pd.DataFrame:
 
 
 def quick_demo(outdir: str = "_eda_demo") -> None:
+    # runs a quick demo with fake data
     df = make_fake_df(2000)
     os.makedirs(outdir, exist_ok=True)
     setup_plotting()
-    # a few plots
+    # just some basic plots for demo
     plot_target_hist(df, outdir)
     plot_ata_by_hour(df, outdir)
     plot_distance_vs_ata(df, outdir)
@@ -781,11 +785,11 @@ def quick_demo(outdir: str = "_eda_demo") -> None:
     print(f"Demo plots saved under: {outdir}")
 
 
-# ------------------------------
-# CLI
+# command line interface
 # ------------------------------
 
 def _cli() -> None:
+    # command line interface for running EDA on CSV files
     p = argparse.ArgumentParser(description="ATA EDA plotting toolkit")
     p.add_argument("csv", type=str, help="Path to CSV")
     p.add_argument("--outdir", type=str, default="ata_eda_output", help="Directory to save figures")
@@ -809,7 +813,7 @@ def _cli() -> None:
 
 
 if __name__ == "__main__":
-    # Example usage (notebook):
+    # Example usage (in a notebook):
     # from ata_eda import setup_plotting, plot_target_hist, plot_corr_heatmap, make_fake_df
     # setup_plotting()
     # df = make_fake_df(5000)
@@ -817,7 +821,7 @@ if __name__ == "__main__":
     # plot_corr_heatmap(df)
     # plt.show()
     #
-    # CLI:
+    # Command line usage:
     # python ata_eda.py your_data.csv --outdir eda_output --query "city == 'Jilin'"
     _cli()
 

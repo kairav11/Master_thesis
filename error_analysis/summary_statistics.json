@@ -1,0 +1,30 @@
+{
+  "Jilin": {
+    "best_mae_model": "RandomForest",
+    "best_mae_value": 1.864,
+    "best_r2_model": "RandomForest",
+    "best_r2_value": 0.996,
+    "best_accuracy_model": "RandomForest",
+    "best_accuracy_value": 0.974,
+    "mean_mae": 27.83366666666667,
+    "std_mae": 30.03869402398624,
+    "mean_r2": 0.7743333333333333,
+    "std_r2": 0.30226787236930536,
+    "mean_accuracy": 0.5591666666666667,
+    "std_accuracy": 0.4384542925627102
+  },
+  "Yantai": {
+    "best_mae_model": "RandomForest",
+    "best_mae_value": 0.689,
+    "best_r2_model": "RandomForest",
+    "best_r2_value": 1.0,
+    "best_accuracy_model": "RandomForest",
+    "best_accuracy_value": 0.995,
+    "mean_mae": 18.226499999999998,
+    "std_mae": 25.156280836005944,
+    "mean_r2": 0.9231666666666666,
+    "std_r2": 0.13112347870105742,
+    "mean_accuracy": 0.6916666666666668,
+    "std_accuracy": 0.3763932340872597
+  }
+}

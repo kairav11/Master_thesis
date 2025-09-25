@@ -1,0 +1,38 @@
+{
+  "Jilin": {
+    "best_model_overall": "RandomForest",
+    "worst_model_overall": "Transformer",
+    "best_mae": 1.864,
+    "worst_mae": 74.208,
+    "mae_range": 72.344,
+    "mae_std": 30.03869402398624,
+    "best_r2": 0.996,
+    "worst_r2": 0.227,
+    "r2_range": 0.769,
+    "best_accuracy": 0.974,
+    "worst_accuracy": 0.085,
+    "accuracy_range": 0.889,
+    "model_count": 6
+  },
+  "Yantai": {
+    "best_model_overall": "RandomForest",
+    "worst_model_overall": "Linear",
+    "best_mae": 0.689,
+    "worst_mae": 65.962,
+    "mae_range": 65.27300000000001,
+    "mae_std": 25.156280836005944,
+    "best_r2": 1.0,
+    "worst_r2": 0.666,
+    "r2_range": 0.33399999999999996,
+    "best_accuracy": 0.995,
+    "worst_accuracy": 0.081,
+    "accuracy_range": 0.914,
+    "model_count": 6
+  },
+  "cross_city": {
+    "jilin_better_models": 1,
+    "yantai_better_models": 5,
+    "avg_mae_difference": -9.607166666666672,
+    "mae_correlation": 0.5063506857803164
+  }
+}

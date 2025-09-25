@@ -1,0 +1,3 @@
+City,Best MAE Model,Best MAE,Best R² Model,Best R²,Best Accuracy Model,Best Accuracy,Mean MAE,Mean R²,Mean Accuracy
+Jilin,RandomForest,1.864,RandomForest,0.996,RandomForest,0.974,27.834 ± 30.039,0.774 ± 0.302,0.559 ± 0.438
+Yantai,RandomForest,0.689,RandomForest,1.000,RandomForest,0.995,18.226 ± 25.156,0.923 ± 0.131,0.692 ± 0.376

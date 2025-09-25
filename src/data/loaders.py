@@ -15,24 +15,26 @@ from src.features.engineering import (
 
 
 def load_raw(jl_csv: str | Path, yt_csv: str | Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # Load raw delivery data for both Jilin and Yantai cities
     df_jl = pd.read_csv(jl_csv)
     df_yt = pd.read_csv(yt_csv)
     return df_jl, df_yt
 
 
 def build_features(
+    # Construct feature set from raw data including weather and derived features
     df: pd.DataFrame,
     city_lat: float,
     city_lon: float,
     datetime_col: str = "accept_time",
 ) -> pd.DataFrame:
-    df1 = add_basic_features(df)
-    df2 = augment_with_weather(df1, datetime_col=datetime_col, mode="city", city_lat=city_lat, city_lon=city_lon)
-    df3 = add_derived_features(df2)
-    # Keep rows with target present; allow NaNs in features (handled by imputers/models)
+    df1 = add_basic_features(df)  # Add basic time and distance features
+    df2 = augment_with_weather(df1, datetime_col=datetime_col, mode="city", city_lat=city_lat, city_lon=city_lon)  # Add weather data
+    df3 = add_derived_features(df2)  # Add derived features like buckets and flags
+    # Retain only rows with valid target values
     if "ata_minutes" in df3.columns:
         df3 = df3[df3["ata_minutes"].notna()]
-    # Try outlier removal but don't let it collapse the dataset
+    # Apply outlier filtering while preserving dataset integrity
     filtered = drop_outliers_iqr(df3, cols=["ata_minutes", "distance_km", "speed_kmh"], k=1.5)
     if len(filtered) == 0:
         return df3.reset_index(drop=True)
@@ -40,7 +42,8 @@ def build_features(
 
 
 def split_xy(df: pd.DataFrame, target: str = "ata_minutes") -> Tuple[pd.DataFrame, pd.Series]:
-    # simple feature selection: numeric + some categorical encoded as codes
+    # Separate features and target variable for model training
+    # Select numeric features and encode categorical variables
     work = df.copy()
     if "city" in work.columns:
         work["city_code"] = pd.Categorical(work["city"]).codes
@@ -69,7 +72,7 @@ def split_xy(df: pd.DataFrame, target: str = "ata_minutes") -> Tuple[pd.DataFram
 
     X = work[feature_cols].astype(float)
     y = pd.to_numeric(work[target], errors="coerce")
-    # Align and drop rows where target is missing
+    # Remove rows with missing target values
     mask = y.notna()
     X = X.loc[mask]
     y = y.loc[mask]

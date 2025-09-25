@@ -26,6 +26,7 @@ except Exception:  # pragma: no cover
 
 
 def _metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    # Calculate comprehensive regression metrics
     mae = float(mean_absolute_error(y_true, y_pred))
     rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
     r2 = float(r2_score(y_true, y_pred))
@@ -33,12 +34,13 @@ def _metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     acc20 = float((err <= 20.0).mean())
     acc10 = float((err <= 10.0).mean())
     acc5 = float((err <= 5.0).mean())
-    # Define overall accuracy as ±10 minutes by default
+    # Use ±10 minutes as the default accuracy threshold
     acc = acc10
     return {"MAE": mae, "RMSE": rmse, "R2": r2, "accuracy": acc, "accuracy5": acc5, "accuracy10": acc10, "accuracy20": acc20}
 
 
 def train_eval_knn(X, y, n_neighbors: int = 15, test_size: float = 0.2, random_state: int = 42):
+    # Train and evaluate K-Nearest Neighbors regressor
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
     pre = ColumnTransformer([
@@ -53,6 +55,7 @@ def train_eval_knn(X, y, n_neighbors: int = 15, test_size: float = 0.2, random_s
 
 
 def train_eval_linear(X, y, test_size: float = 0.2, random_state: int = 42):
+    # Train and evaluate Linear Regression model
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
     pre = ColumnTransformer([
@@ -66,6 +69,7 @@ def train_eval_linear(X, y, test_size: float = 0.2, random_state: int = 42):
 
 
 def train_eval_rf(X, y, n_estimators: int = 300, max_depth: Optional[int] = None, test_size: float = 0.2, random_state: int = 42):
+    # Train and evaluate Random Forest regressor
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
     pre = ColumnTransformer([
@@ -84,6 +88,7 @@ def train_eval_rf(X, y, n_estimators: int = 300, max_depth: Optional[int] = None
 
 
 def train_eval_xgb(X, y, test_size: float = 0.2, random_state: int = 42):
+    # Train and evaluate XGBoost regressor
     if XGBRegressor is None:
         raise RuntimeError("xgboost is not available")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -104,6 +109,7 @@ def train_eval_xgb(X, y, test_size: float = 0.2, random_state: int = 42):
 
 
 def train_eval_catboost(X, y, test_size: float = 0.2, random_state: int = 42):
+    # Train and evaluate CatBoost regressor
     if CatBoostRegressor is None:
         raise RuntimeError("catboost is not available")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)

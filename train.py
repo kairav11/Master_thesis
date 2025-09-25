@@ -19,12 +19,14 @@ from src.models.transformers import train_eval_simple_transformer
 
 
 def main():
-    p = argparse.ArgumentParser()
+    # Main training pipeline for delivery time prediction models
+    # Processes data for both Jilin and Yantai cities
+    p = argparse.ArgumentParser()  # Configure command line arguments
     p.add_argument("--jl_csv", type=str, default=str(Path("delivery_jl.csv").resolve()))
     p.add_argument("--yt_csv", type=str, default=str(Path("delivery_yt.csv").resolve()))
-    p.add_argument("--city_lat_jl", type=float, default=43.837)  # Jilin
+    p.add_argument("--city_lat_jl", type=float, default=43.837)  # Jilin city latitude
     p.add_argument("--city_lon_jl", type=float, default=126.549)
-    p.add_argument("--city_lat_yt", type=float, default=37.463)  # Yantai
+    p.add_argument("--city_lat_yt", type=float, default=37.463)  # Yantai city latitude
     p.add_argument("--city_lon_yt", type=float, default=121.447)
     p.add_argument("--which", type=str, default="all", help="jl|yt|all")
     p.add_argument("--out_json", type=str, default="metrics.json", help="Path to save metrics JSON")
@@ -33,17 +35,18 @@ def main():
     args = p.parse_args()
 
     df_jl, df_yt = load_raw(args.jl_csv, args.yt_csv)
-    # Cleaning first
+    # Apply data cleaning to both datasets
     df_jl = clean_data(df_jl)
     df_yt = clean_data(df_yt)
-    # Defer EDA until just before ML (on feature set)
+    # EDA will be performed on the engineered feature set
 
     results = {}
     eda_reports = {}
 
     def run_city(df, lat, lon, tag):
+        # Process a single city through the complete ML pipeline
         feats = build_features(df, city_lat=lat, city_lon=lon, datetime_col="accept_time")
-        # EDA just before ML on features
+        # Perform exploratory data analysis on the feature set
         try:
             generate_eda_plots(feats, out_dir=f"eda_{tag}_features", title=f"{tag} (features)")
         except Exception:
@@ -52,7 +55,7 @@ def main():
             eda_reports[tag] = basic_report(feats)
         except Exception:
             eda_reports[tag] = {"error": "EDA report failed"}
-        # Full ATA EDA suite from ata_eda.py
+        # Run comprehensive EDA using the ata_eda toolkit
         try:
             run_eda_suite(feats, outdir=f"ata_eda_{tag}")
         except Exception:
@@ -63,7 +66,7 @@ def main():
             return
 
         res_city = {}
-        # Classical
+        # Train classical machine learning models
         _, res_city["Linear"] = train_eval_linear(X, y)
         _, res_city["KNN"] = train_eval_knn(X, y)
         _, res_city["RandomForest"] = train_eval_rf(X, y)
@@ -76,7 +79,7 @@ def main():
         except Exception as e:
             res_city["CatBoost"] = {"error": str(e)}
 
-        # Transformer
+        # Train transformer-based neural network model
         _, res_city["Transformer"] = train_eval_simple_transformer(X, y)
 
         results[tag] = res_city
@@ -86,7 +89,7 @@ def main():
     if args.which in ("yt", "all"):
         run_city(df_yt, args.city_lat_yt, args.city_lon_yt, "Yantai")
 
-    # Round all float values to 3 decimals for stable reporting
+    # Round floating point values for consistent reporting
     def _round_vals(obj):
         if isinstance(obj, dict):
             return {k: _round_vals(v) for k, v in obj.items()}
@@ -96,21 +99,21 @@ def main():
             return round(obj, 3)
         return obj
 
-    # include EDA summaries (from features) under a special key
+    # Include EDA summaries alongside model metrics
     results_all = {"EDA": eda_reports, "metrics": results}
     rounded = _round_vals(results_all)
 
-    # Print to console
+    # Display results to console
     print(json.dumps(rounded, indent=2))
 
-    # Persist JSON
+    # Save results to JSON file
     try:
         with open(args.out_json, "w", encoding="utf-8") as f:
             json.dump(rounded, f, indent=2)
     except Exception:
         pass
 
-    # Persist CSV (flatten per city/model)
+    # Export flattened results to CSV format
     try:
         import csv
         rows = []
@@ -133,13 +136,13 @@ def main():
     except Exception:
         pass
 
-    # Persist per-city pivot tables: rows=metrics, columns=models
+    # Create pivot tables for each city with metrics as rows and models as columns
     try:
         import csv
         for city, models in metrics_section.items():
             if not isinstance(models, dict):
                 continue
-            # Collect all metric keys across models
+            # Gather all available metric names from models
             model_names = [m for m in models.keys()]
             metric_keys = set()
             for m in model_names:
@@ -148,7 +151,7 @@ def main():
                     metric_keys.update(md.keys())
             metric_keys = sorted(metric_keys)
 
-            # Build table: first column 'metric', subsequent columns per model
+            # Construct pivot table with metrics in first column
             out_path = f"{args.out_pivot_prefix}{city}.csv"
             with open(out_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)

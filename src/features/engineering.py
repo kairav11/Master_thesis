@@ -12,10 +12,11 @@ import requests
 
 
 def _parse_md_hms_with_year(s: pd.Series, year: int = 2022) -> pd.Series:
+    # Parse timestamp strings with month-day hour:minute:second format
     t = pd.to_datetime(s, format="%m-%d %H:%M:%S", errors="coerce")
-    # set year if parsed
+    # Assign the specified year to parsed timestamps
     t = t.apply(lambda x: x.replace(year=year) if pd.notna(x) else x)
-    # fallback: generic parse
+    # Use generic parsing if specific format fails
     if t.notna().mean() < 0.6:
         t2 = pd.to_datetime(s, errors="coerce", infer_datetime_format=True)
         t2 = t2.apply(lambda x: x.replace(year=year) if pd.notna(x) else x)
@@ -24,14 +25,15 @@ def _parse_md_hms_with_year(s: pd.Series, year: int = 2022) -> pd.Series:
 
 
 def add_basic_features(df: pd.DataFrame, assumed_year: int = 2022) -> pd.DataFrame:
+    # Add fundamental features including delivery time and distance calculations
     out = df.copy()
-    # ata in minutes
+    # Calculate actual time of arrival in minutes
     if {"delivery_time", "accept_time"}.issubset(out.columns):
         out["accept_time"] = _parse_md_hms_with_year(out["accept_time"], year=assumed_year)
         out["delivery_time"] = _parse_md_hms_with_year(out["delivery_time"], year=assumed_year)
         out["ata_minutes"] = (out["delivery_time"] - out["accept_time"]).dt.total_seconds() / 60
 
-    # haversine distance from gps pairs if available
+    # Compute haversine distance between GPS coordinates
     has_cols = {"accept_gps_lat", "accept_gps_lng", "delivery_gps_lat", "delivery_gps_lng"}.issubset(out.columns)
     if has_cols:
         R = 6371.0
@@ -50,6 +52,7 @@ def add_basic_features(df: pd.DataFrame, assumed_year: int = 2022) -> pd.DataFra
 
 
 def _weather_cache_path_csv(lat: float, lon: float, start_date: str, end_date: str) -> str:
+    # Generate cache file path for weather data based on location and date range
     key = json.dumps({"lat": round(lat, 4), "lon": round(lon, 4), "start": start_date, "end": end_date})
     h = hashlib.md5(key.encode()).hexdigest()
     os.makedirs(".weather_cache", exist_ok=True)
@@ -57,6 +60,7 @@ def _weather_cache_path_csv(lat: float, lon: float, start_date: str, end_date: s
 
 
 def fetch_hourly_weather(lat: float, lon: float, start_date: str, end_date: str, use_cache: bool = True) -> pd.DataFrame:
+    # Retrieve hourly weather data from Open-Meteo API with caching
     cache_fp = _weather_cache_path_csv(lat, lon, start_date, end_date)
     if use_cache and os.path.exists(cache_fp):
         return pd.read_csv(cache_fp, parse_dates=["dt_hour"])  # type: ignore[arg-type]
@@ -89,6 +93,7 @@ def fetch_hourly_weather(lat: float, lon: float, start_date: str, end_date: str,
 
 
 def add_time_features(df: pd.DataFrame, datetime_col: str) -> pd.DataFrame:
+    # Extract temporal features from datetime column
     out = df.copy()
     out[datetime_col] = pd.to_datetime(out[datetime_col], errors="coerce")
     out["dt_hour"] = out[datetime_col].dt.floor("h")
@@ -101,6 +106,7 @@ def add_time_features(df: pd.DataFrame, datetime_col: str) -> pd.DataFrame:
 
 
 def add_holiday_features(df: pd.DataFrame, datetime_col: str, country_code: str = "CN") -> pd.DataFrame:
+    # Add holiday flags and names using the holidays library
     import holidays as pyholidays
 
     out = df.copy()
@@ -124,6 +130,7 @@ def add_holiday_features(df: pd.DataFrame, datetime_col: str, country_code: str 
 
 
 def augment_with_weather(
+    # Add weather data to the dataset using either city coordinates or individual GPS points
     df: pd.DataFrame,
     datetime_col: str = "accept_time",
     lat_col: str = "lat",
@@ -149,13 +156,13 @@ def augment_with_weather(
     start_s = start_date.strftime("%Y-%m-%d")
     end_s = end_date.strftime("%Y-%m-%d")
 
-    if mode == "city":
+    # Use city-level weather data when mode is "city"
         if city_lat is None or city_lon is None:
             raise ValueError("Provide city_lat and city_lon when mode='city'.")
         wdf = fetch_hourly_weather(city_lat, city_lon, start_s, end_s, use_cache=True)
         return base.merge(wdf, on="dt_hour", how="left")
 
-    # Lat/Lon mode
+    # Use individual GPS coordinates for weather data
     base["_lat"] = pd.to_numeric(base.get(lat_col, pd.NA), errors="coerce")
     base["_lon"] = pd.to_numeric(base.get(lon_col, pd.NA), errors="coerce")
     base["_lat_r"] = (base["_lat"] / round_deg).round() * round_deg
@@ -200,13 +207,14 @@ def augment_with_weather(
 
 
 def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
+    # Create derived features including business hours, weather buckets, and speed calculations
     out = df.copy()
-    # business hour flags
+    # Create flags for business and peak hours
     if "hour" in out.columns:
         out["is_business_hour"] = out["hour"].between(9, 18).astype("Int64")
         out["is_peak_hour"] = out["hour"].isin([11, 12, 13, 17, 18, 19, 20]).astype("Int64")
 
-    # weather buckets
+    # Create categorical buckets for weather variables
     if "precipitation" in out.columns:
         out["is_rain"] = (pd.to_numeric(out["precipitation"], errors="coerce") > 0).astype("Int64")
     if "temperature_2m" in out.columns:
@@ -220,7 +228,7 @@ def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
             wind, bins=[-np.inf, 5, 10, 20, np.inf], labels=["calm", "breeze", "windy", "strong"],
         ).astype("string")
 
-    # speed and distance buckets
+    # Calculate delivery speed and create distance buckets
     if {"distance_km", "ata_minutes"}.issubset(out.columns):
         dist = pd.to_numeric(out["distance_km"], errors="coerce")
         mins = pd.to_numeric(out["ata_minutes"], errors="coerce")
@@ -233,6 +241,7 @@ def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def drop_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.DataFrame:
+    # Remove outliers using interquartile range method
     def iqr_bounds(s: pd.Series, k_: float = 1.5) -> tuple[float, float]:
         s = pd.to_numeric(s, errors="coerce").dropna()
         q1, q3 = s.quantile(0.25), s.quantile(0.75)

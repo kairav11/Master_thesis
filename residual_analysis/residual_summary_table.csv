@@ -1,0 +1,13 @@
+City,Model,Mean_Residual,Std_Residual,Skewness,Kurtosis,Normality_Test_p,Heteroscedasticity_r,Outliers_%
+Jilin,Linear,12.498,50.945,0.082,0.466,0.000,0.010,1.5%
+Jilin,KNN,1.824,22.214,-0.022,0.055,0.583,0.001,0.9%
+Jilin,RandomForest,0.002,0.631,-0.052,0.199,0.009,0.004,1.2%
+Jilin,XGBoost,0.798,2.471,-0.024,0.071,0.453,0.005,0.9%
+Jilin,CatBoost,0.005,1.330,-0.037,0.108,0.172,0.003,1.0%
+Jilin,Transformer,7.557,158.633,-0.015,1.672,0.000,0.002,2.1%
+Yantai,Linear,12.497,65.164,0.046,0.483,0.000,-0.021,1.6%
+Yantai,KNN,1.807,18.725,-0.022,0.055,0.584,-0.019,0.9%
+Yantai,RandomForest,0.001,0.233,-0.052,0.199,0.009,-0.013,1.2%
+Yantai,XGBoost,0.795,1.756,-0.022,0.069,0.482,-0.032,0.9%
+Yantai,CatBoost,0.005,1.274,-0.037,0.108,0.172,-0.013,1.0%
+Yantai,Transformer,6.602,20.683,-0.001,1.664,0.000,-0.012,2.1%
