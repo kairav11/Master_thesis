@@ -122,62 +122,6 @@ python -c "import pandas, numpy, sklearn, matplotlib, seaborn, xgboost, catboost
 
 ### 1. Basic Training Pipeline
 
-**Run the complete ML pipeline:**
-```bash
-python train.py
-```
-
-**Run for specific city:**
-```bash
-# Jilin only
-python train.py --which jl
-
-# Yantai only  
-python train.py --which yt
-```
-
-**Custom data paths:**
-```bash
-python train.py --jl_csv path/to/jilin_data.csv --yt_csv path/to/yantai_data.csv
-```
-
-### 2. Exploratory Data Analysis
-
-**Generate comprehensive EDA plots:**
-```bash
-python ata_eda.py delivery_jl.csv --outdir eda_jilin_output
-python ata_eda.py delivery_yt.csv --outdir eda_yantai_output
-```
-
-**Quick demo with synthetic data:**
-```bash
-python -c "from ata_eda import quick_demo; quick_demo()"
-```
-
-### 3. Error Analysis
-
-**Basic error analysis:**
-```bash
-python error_analysis.py
-```
-
-**Detailed error analysis:**
-```bash
-python detailed_error_analysis.py
-```
-
-**Residual analysis:**
-```bash
-python residual_analysis.py
-```
-
-**Additional analysis (KNN scatter plots and Transformer validation curves):**
-```bash
-python additional_analysis.py
-```
-
-### 4. Complete Analysis Pipeline
-
 **Run all analysis scripts in sequence:**
 ```bash
 # 1. Train models
@@ -250,43 +194,7 @@ python additional_analysis.py
 - **Larger dataset** in Yantai (182,898 vs 27,666 records) improves performance
 - **Consistent patterns** across cities for model rankings
 
-### 4. Production Recommendations
 
-#### **Primary Model**: RandomForest
-- Best overall performance (MAE: 1.276 minutes)
-- Robust to outliers and noise
-- Good interpretability
-
-#### **Backup Model**: CatBoost
-- Best statistical properties
-- Excellent residual behavior
-- Built-in categorical feature handling
-
-#### **Monitoring Strategy**:
-- Track residual distribution changes
-- Monitor for increasing heteroscedasticity
-- Alert on significant changes in outlier rates
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Missing Dependencies**
-```bash
-pip install --upgrade -r requirements.txt
-```
-
-2. **Memory Issues**
-- Reduce dataset size for testing
-- Use smaller batch sizes for neural networks
-
-3. **Weather API Issues**
-- Check internet connection
-- API requests are cached locally in `.weather_cache/`
-
-4. **File Path Issues**
-- Ensure CSV files are in the correct directory
-- Use absolute paths if needed
 
 ### Performance Optimization
 
@@ -303,26 +211,3 @@ pip install --upgrade -r requirements.txt
 - **Models Evaluated**: 6 different algorithms
 - **Cities Analyzed**: 2 (Jilin and Yantai)
 
-## Citation
-
-If you use this project in your research, please cite:
-
-```
-Delivery Time Prediction Models for Last-Mile Delivery Systems
-Master's Thesis - [Your Name]
-[Year] - [University]
-```
-
-## License
-
-This project is created for academic research purposes. Please ensure proper attribution when using the code or results.
-
-## Contact
-
-For questions about this project, please refer to the thesis documentation or contact the author.
-
----
-
-**Last Updated**: [Current Date]
-**Version**: 1.0
-**Status**: Complete - Ready for Thesis Submission
